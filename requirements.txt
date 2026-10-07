@@ -1,0 +1,5 @@
+# Versions used by the verified local integration.
+groq==1.7.0
+httpx2==2.13.1
+mcp==2.3.0
+python-dotenv==1.2.4

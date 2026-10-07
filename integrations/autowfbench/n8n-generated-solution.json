@@ -1,0 +1,9 @@
+{
+  "id": "ai-workflow-composer-n8n",
+  "name": "AI Workflow Composer - Generated n8n Workflow",
+  "version": "1.0.0",
+  "endpoint": "http://127.0.0.1:9401",
+  "runtime": "n8n",
+  "description": "Generated n8n workflow executed through the AutoWFBench bridge.",
+  "auth_env": ""
+}
