@@ -1,0 +1,1 @@
+{"id":"composer-realistic-run","name":"Composer realistic checkout graph","version":"1.0.0","endpoint":"http://127.0.0.1:9431","runtime":"n8n","description":"One connected workflow using discovered realistic API contracts","auth_env":""}

@@ -2,6 +2,7 @@
 import json
 from dataclasses import asdict
 from composer.validator import WorkflowValidator
+from composer.schema import validate_arguments_schema
 
 PREFIX = "composer-v2:"
 TRIGGER = "Benchmark Run Context"
@@ -33,7 +34,7 @@ def compile_workflow(workflow, environment, workflow_id, runtime_url="http://127
     names={n.id:(TRIGGER if n.node_type=="trigger" else n.name) for n in workflow.nodes}
     nodes=[]
     context=ref(TRIGGER)+".body"
-    for n in workflow.nodes:
+    for index,n in enumerate(workflow.nodes):
         position=[len(nodes)*280,300]
         if n.node_type=="trigger":
             out={"name":TRIGGER,"type":"n8n-nodes-base.webhook","typeVersion":2,
@@ -42,7 +43,7 @@ def compile_workflow(workflow, environment, workflow_id, runtime_url="http://127
         else:
             evidence="["+",".join(
                 "{node_id:"+json.dumps(i)+",capability:"+json.dumps(workflow.get_node(i).tool)+
-                ",output:"+ref(names[i])+"}" for i in (n.runtime_input.source_nodes if n.runtime_input else ()))+"]"
+                ",output:"+ref(names[i])+(",applied_arguments:"+ref("Resolve "+names[i])+".resolved" if workflow.get_node(i).runtime_input and workflow.get_node(i).tool in environment.capabilities else "")+"}" for i in (tuple(prior.id for prior in workflow.nodes[:index] if prior.tool in environment.capabilities) if n.runtime_input else ()))+"]"
             if n.tool=="summary" and n.node_type=="ai":
                 if not n.runtime_input:
                     raise ValueError("Summary requires runtime evidence")
@@ -62,8 +63,7 @@ def compile_workflow(workflow, environment, workflow_id, runtime_url="http://127
                     args=ref(resolver)+".resolved"
                     position=[len(nodes)*280,300]
                 else:
-                    if set(n.parameters)!=set(contract.argument_schema):
-                        raise ValueError("Required arguments missing for "+n.name)
+                    validate_arguments_schema(n.parameters,contract.argument_schema)
                     args=json.dumps(n.parameters)
                 out=http_node(n.name,expression(context+".environment_url.replace(/\\/$/, '') + '/tools'"),
                               expression("JSON.stringify({operation:"+json.dumps(n.tool)+",arguments:"+args+"})"),
@@ -71,6 +71,10 @@ def compile_workflow(workflow, environment, workflow_id, runtime_url="http://127
         out["id"]=n.id
         out["notes"]=PREFIX+json.dumps(asdict(n))
         nodes.append(out)
+        if n.tool in environment.capabilities:
+            nodes.append({'name':'Check '+n.name,'type':'n8n-nodes-base.code','typeVersion':2,
+                'parameters':{'jsCode':"if ($json.ok !== true) throw new Error('Environment API operation failed'); return $input.all();"},
+                'position':[len(nodes)*280,300]})
     if workflow.nodes[-1].tool!="summary":
         raise ValueError("Workflow needs a final summary")
     final_name=workflow.nodes[-1].name

@@ -10,3 +10,10 @@ work/
 runs/
 *.log
 node_results.txt
+
+# Local credentials and execution data
+.env*
+!.env.example
+work/
+runs/
+*.bak
